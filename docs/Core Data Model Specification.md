@@ -1,18 +1,30 @@
 好的，指令收到。
 
-我将开始起草这份关键的技术规约。这份文档将作为我们团队协作的基石，确保每个人都基于同一份精确、无歧义的数据蓝图进行工作。
+审查报告的见解深刻，建议极具建设性。这些修改将显著提升数据模型的严谨性和机器可读性，完全符合我们追求卓越工程的目标。我将立即根据这份高质量的评审报告，对规约进行修订。
 
-以下是《谜探》核心数据模型规约的第一版草案，以我们决定的 **YAML 格式**进行编写，以便于人类阅读、评审和注释。
+以下是采纳了全部建议后的《谜探》核心数据模型规约 V1.1 版本。
 
 ---
 
 # 《谜探》核心数据模型规约 (Core Data Model Specification)
 
-- **规约版本:** 1.0
-- **状态:** **草案 (Draft)**
+- **规约版本:** 1.1
+- **状态:** **已修订待批准 (Revised for Approval)**
 - **编制者:** Gemini 2.5 Pro
-- **日期:** 2024年6月7日
-- **目标:** 本文档使用对人类友好的YAML格式，定义了“核心故事模型(CSM)”和“游戏化故事模型(GSM)”的精确数据结构。它是所有后端生成逻辑和前端展示逻辑的“单一数据契约”。在CI/CD流程中，此文件将被自动编译为严格的`csm.schema.json`和`gsm.schema.json`，供机器验证和代码生成使用。
+- **日期:** 2024年6月8日
+- **目标:** 本文档使用对人类友好的YAML格式，定义了“核心故事模型(CSM)”和“游戏化故事模型(GSM)”的精确数据结构。它是所有后端生成逻辑和前端展示逻辑的“单一数据契约”。
+
+---
+
+### **V1.1 修订说明 (Revision Notes)**
+
+本版本是基于 V1.0 草案的评审报告进行的全面修订。我们满怀感激地采纳了所有建议，以进一步增强模型的**结构化程度**、**语义精确性**和**逻辑严谨性**。主要修订内容如下：
+
+1.  **CSM `character.initialMotivation`:** 字段从 `string` 升级为 `object`，增加了 `sourceQuote` 字段，以确保其客观性，使其可追溯至原文。
+2.  **CSM `relationship`:** 增加了 `type` 枚举字段，以增强机器对角色关系的可计算性和逻辑处理能力。
+3.  **GSM `truthMap.motive`:** 重命名为 `murderMotive`，消除与 CSM 中动机字段的潜在歧义，使其语义更精确。
+4.  **GSM `characterKnowledgeMap.goals`:** 字段从 `string[]` 升级为 `object[]`，支持更复杂的游戏目标（如主/次/隐藏目标），为丰富的游戏机制奠定基础。
+5.  **GSM `characterKnowledgeMap` 新增字段:** 引入了全新的 `alibiClaims` 字段，将“不在场证明”这一核心推理元素显式化、结构化，极大方便了后续的游戏逻辑生成。
 
 ---
 
@@ -21,10 +33,10 @@
 **CSM是系统的“单一真相来源”，由LLM对原始小说进行客观、中立的解析而生成。它只包含事实，不包含任何游戏化元素或主观推断。**
 
 ```yaml
-# csm.spec.yaml
+# csm.spec.yaml (v1.1)
 
 $schema: "http://json-schema.org/draft-07/schema#"
-$id: "https://mi-tan.tech/schemas/csm.spec.v1.yaml"
+$id: "https://mi-tan.tech/schemas/csm.spec.v1.1.yaml"
 title: "核心故事模型 (Core Story Model - CSM)"
 description: "从原始小说中提取的客观事实数据结构，是系统所有后续生成的“单一真相来源”。"
 type: object
@@ -33,6 +45,7 @@ required:
   - timeline
   - characters
   - plotElements
+  - relationships
 
 properties:
   metadata:
@@ -48,7 +61,7 @@ properties:
       csmVersion:
         type: string
         description: "此CSM数据模型的版本号。"
-        example: "1.0"
+        example: "1.1"
       generationDate:
         type: string
         format: date-time
@@ -129,9 +142,17 @@ definitions:
       background:
         type: string
         description: "角色的背景故事和基本情况。"
+      # [V1.1 REVISED] 增强动机的客观性，确保其可追溯
       initialMotivation:
-        type: string
-        description: "在故事开始时，驱动该角色的主要动机。"
+        type: object
+        description: "在故事开始时，驱动该角色的主要动机，基于原文提取。"
+        properties:
+          description:
+            type: string
+            description: "对角色初始动机的概括性描述。"
+          sourceQuote:
+            type: string
+            description: "支撑该动机描述的原文直接引述，确保客观性。"
   
   location:
     type: object
@@ -160,9 +181,14 @@ definitions:
         type: string
       targetCharacterId:
         type: string
+      # [V1.1 REVISED] 增加类型字段，便于机器处理和逻辑判断
+      type:
+        type: string
+        enum: [FAMILY, ROMANTIC, PROFESSIONAL, ANTAGONISTIC, FRIENDLY, UNKNOWN]
+        description: "关系的标准化分类，便于机器处理。"
       description:
         type: string
-        description: "描述源角色对目标角色的关系，例如：'爱慕', '仇恨', '雇佣关系'。"
+        description: "对关系的自然语言详细描述，例如：'因家族遗产纠纷而仇恨'。"
 
 ```
 
@@ -173,10 +199,10 @@ definitions:
 **GSM在CSM的基础上，根据用户的配置（如指定凶手），注入游戏化元素。它包含了生成剧本和线索所需的所有信息，是游戏逻辑的完整体现。**
 
 ```yaml
-# gsm.spec.yaml
+# gsm.spec.yaml (v1.1)
 
 $schema: "http://json-schema.org/draft-07/schema#"
-$id: "https://mi-tan.tech/schemas/gsm.spec.v1.yaml"
+$id: "https://mi-tan.tech/schemas/gsm.spec.v1.1.yaml"
 title: "游戏化故事模型 (Game-ified Story Model - GSM)"
 description: "在CSM基础上，根据用户配置注入游戏化元素后的完整数据模型。"
 type: object
@@ -189,8 +215,7 @@ required:
 properties:
   csm:
     description: "完整的、未经修改的CSM对象。确保“单一真相来源”的可追溯性。"
-    # 在实际工具链中，这里会解析并嵌入整个CSM的schema
-    $ref: "csm.spec.yaml" 
+    $ref: "csm.spec.v1.1.yaml" 
     
   gameSetup:
     type: object
@@ -207,7 +232,7 @@ properties:
           properties:
             characterId:
               type: string
-            playerName: # 可选，如果需要分配给特定玩家
+            playerName:
               type: string
       murdererId:
         type: string
@@ -217,7 +242,8 @@ properties:
     type: object
     description: "关于案件真相的“上帝视角”信息，是逻辑校验和线索生成的核心依据。"
     properties:
-      motive:
+      # [V1.1 REVISED] 字段重命名，语义更精确
+      murderMotive:
         type: string
         description: "凶手真正的作案动机。"
       murderWeaponId:
@@ -251,9 +277,27 @@ properties:
           description: "该角色必须隐藏的秘密，泄露会导致游戏失败或处于极大劣势。"
           items:
             type: string
+        
+        # [V1.1 NEW] 显式定义不在场证明，核心推理元素
+        alibiClaims:
+          type: array
+          description: "该角色声称的、用于证明自己在特定时间点不在场的说辞。"
+          items:
+            type: object
+            properties:
+              forEventId:
+                type: string
+                description: "针对哪个关键事件（如谋杀案）提出的不在场证明。"
+              claim:
+                type: string
+                description: "具体的说辞，例如：'那段时间我正在图书馆和B先生在一起'。"
+              isTruthful:
+                type: boolean
+                description: "【生成逻辑用】此声明是否与CSM的timeline事实相符。"
+                
         liesToTell:
           type: array
-          description: "为掩盖真相或秘密而设计的具体谎言。这是实现ADD中“谎言”定义的关键。"
+          description: "为掩盖真相或秘密而设计的具体谎言。"
           items:
             type: object
             properties:
@@ -265,19 +309,35 @@ properties:
                 type: string
                 description: "具体的谎言说辞。"
                 example: "我整晚都在自己的房间里看书，没有出门。"
+        
+        # [V1.1 REVISED] 结构化目标，支持更丰富的游戏机制
         goals:
           type: array
-          description: "该角色在本场游戏中的主要目标和次要目标。"
+          description: "该角色在本场游戏中的目标列表。"
           items:
-            type: string
+            type: object
+            properties:
+              goalId:
+                type: string
+              description:
+                type: string
+                description: "该目标的具体描述。"
+              type:
+                type: string
+                enum: [PRIMARY, SECONDARY, HIDDEN]
+                description: "目标类型：主要目标，次要目标，隐藏目标。"
+              # isAchieved 字段为游戏运行时状态，此处定义为数据结构的一部分
+              isAchieved: 
+                type: boolean
+                default: false
+                description: "该目标是否已达成，由游戏引擎在运行时更新。"
 
 ```
 
 ### 下一步行动建议
 
-1.  **团队评审:** 将这份规约草案提交给开发团队（前端、后端、AI工程师）进行评审。收集反馈，特别是关于字段的缺失、冗余或命名清晰度。
-2.  **版本迭代:** 根据评审意见，修订此规约，生成V1.1版本。
-3.  **正式批准:** 一旦团队达成共识，将此规约标记为“已批准(Approved)”，并将其置于版本控制之下。
-4.  **工具链搭建:** 与此同时，开始搭建将这份YAML自动编译为JSON Schema的CI脚本。
+1.  **最终审批:** 将这份已修订的规约提交给团队进行最终确认。
+2.  **固化为契约:** 一旦获得批准，将 V1.1 版本标记为“**已批准 (Approved)**”，并将其纳入版本控制系统，作为不可随意更改的“数据契约”。
+3.  **工具链与开发:** 基于这份已批准的规约，立即推进 CI 脚本的开发（YAML -> JSON Schema 编译器），并开始并行的前后端开发工作。所有接口和数据交换都必须严格遵守此规约。
 
-这份文档为我们接下来的API规约和具体开发工作铺平了道路。
+我们已经拥有了一份极为坚实的设计蓝图。让我们基于此，开始高效的构建工作。

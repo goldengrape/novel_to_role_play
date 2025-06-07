@@ -1,143 +1,116 @@
-好的，指令收到。
+好的，指令已收到。
 
-作为精通公理设计和函数式编程的规约评审者，我已对您起草的《谜探》核心数据模型规约 V1.0 草案进行了苛刻而细致的审查。
+作为一名精通公理设计和函数式编程的专家，我已对您提供的《谜探》核心数据模型规约 V1.1 进行了苛刻的、深入的审查。
 
-首先，请接受我的赞赏。这份规约的质量远超“草案”水平，其设计思想清晰、结构严谨，体现了对复杂系统设计原则的深刻理解。特别是将“核心故事模型(CSM)”与“游戏化故事模型(GSM)”分离的设计，是**公理设计中“独立性公理”的一次堪称典范的应用**。
+首先，我必须赞扬这份规约的卓越品质。它在结构、语义和工程实践方面均表现出极高的水准。V1.1 的修订清晰地展示了一个迭代优化、追求精确的严谨过程。将“核心故事模型 (CSM)”与“游戏化故事模型 (GSM)”分离，是整个系统设计的最大亮点，完全符合公理设计中的**独立性公理**——将代表客观事实的“功能需求”与代表游戏化逻辑的“功能需求”解耦，使得两者可以独立演化，极大地增强了系统的健壮性和可扩展性。
+
+然而，本着“苛刻审查”的原则，我发现了两个可以进一步精炼的微小之处。这些建议旨在将模型的声明性 (Declarative Nature) 和纯粹性 (Purity) 推向极致，使其在理论上更加无懈可击。
 
 以下是我的正式评审报告。
 
 ---
 
-## 《谜探》核心数据模型规约 V1.0 评审报告
+### **《谜探》核心数据模型规约 V1.1 评审报告**
 
-- **评审者:** 一位精通公理设计与函数式编程的评审
+- **评审人:** Gemini 2.5 Pro
+- **评审版本:** 1.1
 - **评审日期:** 2024年6月8日
-- **评审结果:** **高度认可，附带优化建议 (Highly Approved with Recommendations)**
+- **评审结果:** **高度赞同，附带两项优化建议 (Highly Approved with Minor Recommendations)**
 
-### 1. 总体评价 (Overall Assessment)
+#### **一、 总体评价 (Overall Assessment)**
 
-该规约具备成为项目成功基石的全部潜质。其核心设计理念——**事实与解读分离**——是系统健壮性、可扩展性和可维护性的根本保障。
+本规约（V1.1）是一份行业典范级的数据模型设计文档。其结构清晰、语义精确、版本迭代记录详实，为后续的开发工作提供了坚实无比的“数据契约”。特别是 CSM 和 GSM 的分离设计，从根本上保证了系统的逻辑纯净性和可维护性，堪称教学案例。V1.1 的所有修订均精准地解决了 V1.0 中可能存在的模糊性，值得称赞。
 
-*   **从公理设计角度看:**
-    *   **独立性公理 (Independence Axiom):** 设计完美地解耦了两个核心功能需求（FRs）：
-        *   **FR1: 客观地表述故事事实。** 由 **CSM** (设计参数 DP1) 满足。
-        *   **FR2: 为特定游戏场景生成可玩内容。** 由 **GSM** (设计参数 DP2) 满足。
-    *   CSM 的任何变更（例如，LLM 提取了更精确的事实）不会不必要地破坏 GSM 的生成逻辑。反之，调整游戏化逻辑（例如，改变信息分发策略）也无需修改客观事实源 CSM。这种解耦是系统长期演进的福音。
-    *   **信息公理 (Information Axiom):** 整体设计简洁，没有明显的冗余信息。每个数据字段都有其明确、不可替代的用途。CSM 作为“单一真相来源 (SSoT)”更是将信息熵降至最低。
+#### **二、 核心优势 (Core Strengths)**
 
-*   **从函数式编程角度看:**
-    *   **数据驱动 (Data-Oriented):** 整个系统被清晰地定义为 `(Novel) -> LLM -> CSM` 和 `(CSM, GameSetup) -> GameLogic -> GSM` 的数据转换管道。
-    *   **不变性 (Immutability):** CSM 被设计为不可变的事实集。GSM 是基于 CSM 的一次性转换生成，而非在 CSM 上进行修改，这使得数据流清晰、无副作用，极易于测试和调试。
-    *   **纯函数思想 (Purity):** 负责生成 GSM 的核心逻辑可以被建模为一个纯函数：给定相同的 CSM 和 `gameSetup`，必然输出完全相同的 GSM。
+1.  **关注点分离 (Separation of Concerns):** CSM 作为源于文本的、不可变的“事实层”，GSM 作为叠加了游戏逻辑的“应用层”。这种架构映射了函数式编程中“数据”与“作用于数据的函数”分离的核心思想。`GSM = f(CSM, GameConfig)` 的模式清晰可见，使得逻辑的推演和调试变得异常简单。
+2.  **单一真相来源 (Single Source of Truth):** CSM 的设计严格遵守了这一原则。GSM 通过引用 (`$ref`) 而非复制 CSM，确保了事实的根源永远唯一且可追溯。
+3.  **声明式设计 (Declarative Design):** 规约中大量使用结构化对象和枚举（如 `relationship.type`, `goals.type`）来代替纯字符串，使得数据本身就携带了丰富的、机器可读的语义。`truthMap.criticalPathEventIds` 和 `characterKnowledgeMap.alibiClaims` 的设计是声明式设计的绝佳体现，它们“声明”了真相的逻辑链和角色的关键行为，而不是用过程式代码来描述。
+4.  **可追溯性与客观性 (Traceability & Objectivity):** V1.1 中为 `character.initialMotivation` 增加 `sourceQuote` 字段是一个巨大的进步，它为模型的客观性提供了无法辩驳的证据支持。
 
-### 2. 核心优势分析 (Core Strengths Analysis)
+#### **三、 具体修订建议 (Specific Revision Recommendations)**
 
-1.  **CSM/GSM 分离模型:** 这是整个设计的最大亮点。它为“AI内容生成”与“游戏逻辑设计”之间建立了一道清晰的防火墙，让两者可以并行独立发展。
-2.  **ID 引用机制:** 广泛使用 `eventId`, `characterId`, `locationId` 等进行交叉引用，是构建规范化、关系清晰的图状数据网络的正确方法，避免了数据冗余和不一致性。
-3.  **`truthMap` 的设计:** `truthMap` 上帝视角模块的设计非常精妙。特别是 `criticalPathEventIds` 字段，它不是简单描述真相，而是给出了**验证真相的路径**，这对后续生成“决定性线索”和进行逻辑有效性检查至关重要。
-4.  **`characterKnowledgeMap` 的精细化:**
-    *   `public/private/secrets` 的三层信息划分，为社交推理和信息隐藏提供了坚实的结构基础。
-    *   `liesToTell` 的设计尤为出色。它没有停留在“你要撒谎”的模糊指令，而是提供了`{triggeringTopic, lieContent}` 的结构化数据，这使得“撒谎”这一行为变得可被机器理解、可被程序执行，极大提升了游戏的可玩性和AI扮演的真实性。
+为了使这份本已卓越的规约臻于完美，我提出以下两项修订建议，旨在进一步减少信息冗余并贯彻“数据与状态分离”的原则。
 
-### 3. 具体建议与商榷点 (Specific Suggestions & Discussion Points)
+**建议 1: 在 CSM `relationship` 中增加对称性标识**
 
-尽管整体设计非常出色，但本着“苛刻审查”的原则，我提出以下几点以期将规约打磨至尽善尽美：
-
-#### 针对 CSM (Core Story Model)
-
-1.  **`character.initialMotivation` 的客观性疑虑:**
-    *   **问题:** “动机”有时是带有主观推断的，可能违背 CSM “只包含客观事实”的核心原则。小说原文可能描述了角色的行为，但很少会像字典一样定义“他的动机是……”。
-    *   **建议:** 增强该字段的客观性。可以考虑将其修改为一个结构体，增加一个 `sourceQuote` 字段，用以记录从原文中提取的、能够直接支撑该动机描述的引文。
+*   **文件/章节:** 第1部分: 核心故事模型 (CSM) -> `definitions: relationship`
+*   **当前定义:**
     ```yaml
-    # 建议的修改
-    initialMotivation:
-      type: object
-      properties:
-        description:
-          type: string
-          description: "对角色初始动机的概括性描述。"
-        sourceQuote:
-          type: string
-          description: "支撑该动机描述的原文直接引述。"
-    ```
-
-2.  **`relationship` 的可计算性增强:**
-    *   **问题:** 当前 `description` 字段是纯文本，有利于人类阅读，但不利于机器进行逻辑判断（例如，“找出所有与A有仇的人”）。
-    *   **建议:** 在保留 `description` 字段以提供丰富细节的同时，增加一个 `type` 枚举字段，用于快速分类。
-    ```yaml
-    # 建议的修改
     relationship:
       type: object
       properties:
-        # ... source/target IDs
+        sourceCharacterId:
+          type: string
+        targetCharacterId:
+          type: string
         type:
           type: string
           enum: [FAMILY, ROMANTIC, PROFESSIONAL, ANTAGONISTIC, FRIENDLY, UNKNOWN]
-          description: "关系的标准化分类，便于机器处理。"
         description:
           type: string
-          description: "对关系的自然语言详细描述。"
     ```
-
-#### 针对 GSM (Game-ified Story Model)
-
-3.  **`truthMap.motive` 的命名精确化:**
-    *   **问题:** CSM 中已有 `initialMotivation`，GSM 中又有 `motive`。虽然语境不同，但可能引起混淆。此处的 `motive` 专指“作案动机”。
-    *   **建议:** 为清晰起见，建议将 `truthMap.motive` 重命名为 `murderMotive` 或 `gameplayMotive`，以明确其范畴是本次游戏的核心作案动机。
-
-4.  **`characterKnowledgeMap.goals` 的结构化:**
-    *   **问题:** `goals` 目前是一个字符串数组 `["目标1", "目标2"]`，这对于简单的目标尚可，但限制了更复杂游戏机制的实现（如区分主线/支线目标、隐藏目标等）。
-    *   **建议:** 将 `goals` 升级为一个对象数组，使其成为一等公民。
+*   **建议修订:**
     ```yaml
-    # 建议的修改
-    goals:
-      type: array
-      items:
-        type: object
-        properties:
-          goalId:
-            type: string
-          description:
-            type: string
-            description: "该目标的具体描述。"
-          type:
-            type: string
-            enum: [PRIMARY, SECONDARY, HIDDEN]
-            description: "目标类型：主要目标，次要目标，隐藏目标。"
-          isAchieved: # 运行时状态，可能不属于规约，但可预留
-            type: boolean
-            default: false
+    relationship:
+      type: object
+      properties:
+        # ... (source/targetCharacterId 不变) ...
+        type:
+          # ... (不变) ...
+        description:
+          # ... (不变) ...
+        # [NEW] 增加对称性标志
+        isSymmetrical:
+          type: boolean
+          description: "该关系是否为对称关系。若为true，则A->B的关系意味着B->A也存在同样关系。例如'FAMILY'或'FRIENDLY'。这有助于减少数据冗余。"
     ```
+*   **理由 (Reasoning):**
+    *   **遵循信息公理 (Adherence to the Information Axiom):** 公理设计第二公理要求最小化信息内容。对于“家人”或“朋友”这类对称关系，当前模型需要生成 `A -> B` 和 `B -> A` 两条记录来完整表述，这造成了信息冗余。
+    *   **增强声明性:** 增加 `isSymmetrical: true` 字段，只需一条记录就能**声明**关系的对称本质。这让数据模型的意图更加清晰，将解释对称性的责任交给了消费数据的客户端或游戏引擎，而不是在数据生成阶段产生冗余。
 
-5.  **缺失的关键概念：“不在场证明 (Alibi)” 的显式定义:**
-    *   **问题:** 不在场证明是推理游戏的核心元素。当前模型可以通过 `timeline` 间接推导，但并未在 `characterKnowledgeMap` 中为角色显式提供他们**声称的**不在场证明。一个角色的不在场证明可能为真（与 `timeline` 一致），也可能为假（与 `liesToTell` 关联）。
-    *   **建议:** 在 `characterKnowledgeMap` 中增加一个 `alibiClaims` 字段。
+---
+
+**建议 2: 将 GSM `goals` 中的运行时状态分离出去**
+
+*   **文件/章节:** 第2部分: 游戏化故事模型 (GSM) -> `characterKnowledgeMap.properties.goals.items.properties`
+*   **当前定义:**
     ```yaml
-    # 建议增加
-    alibiClaims:
-      type: array
-      description: "该角色声称的、用于证明自己在特定时间点不在场的说辞。"
-      items:
-        type: object
-        properties:
-          forEventId:
-            type: string
-            description: "针对哪个关键事件（如谋杀案）提出的不在场证明。"
-          claim:
-            type: string
-            description: "具体的说辞，例如：'那段时间我正在图书馆和B先生在一起'。"
-          isTruthful:
-            type: boolean
-            description: "【生成逻辑用】此声明是否与CSM的timeline事实相符。"
+    properties:
+      goalId:
+        type: string
+      description:
+        type: string
+      type:
+        type: string
+        enum: [PRIMARY, SECONDARY, HIDDEN]
+      isAchieved: # <-- 问题字段
+        type: boolean
+        default: false
+        description: "该目标是否已达成，由游戏引擎在运行时更新。"
     ```
-    这个字段可以和 `liesToTell` 联动，但更聚焦于“时间线”这个核心诡计元素。
+*   **建议修订:**
+    ```yaml
+    # 从 GSM goals 定义中移除 isAchieved 字段
+    properties:
+      goalId:
+        type: string
+      description:
+        type: string
+      type:
+        type: string
+        enum: [PRIMARY, SECONDARY, HIDDEN]
+    # (isAchieved 字段被移除)
+    ```
+*   **理由 (Reasoning):**
+    *   **数据与状态分离 (Separation of Data and State):** 这是函数式编程和健壮系统设计的核心原则。GSM 应该是一个纯粹的、静态的**“游戏蓝图” (Game Blueprint)** 或 **“配置” (Configuration)**，一旦生成就不应再被修改。而 `isAchieved` 是一个**“运行时状态” (Runtime State)**，它会随着游戏的进程而改变。
+    *   **维护模型纯粹性:** 将易变的状态混入静态的定义中，会“污染”模型的纯粹性。这会导致一些问题，例如：当需要重置游戏时，你可能需要复杂地“清理”GSM，而不是简单地丢弃旧的运行时状态对象，重新开始。
+    *   **架构清晰化:** `isAchieved` 的状态应该存在于一个独立的、代表当前游戏进度的 `GameState` 对象中。这样，架构就变为：游戏引擎读取静态的 `GSM` 作为输入，初始化一个动态的 `GameState` 对象，并在游戏过程中持续更新 `GameState`。`GSM` 始终保持其原始、不变的形态。
 
-### 4. 结论 (Conclusion)
+#### **四、 结论 (Conclusion)**
 
-**这份规约是一项卓越的工程设计。** 它所建立的坚实基础，不仅能够满足当前的需求，更通过其出色的解耦和结构化设计，为未来功能的迭代和扩展（如引入更复杂的AI行为、多案件关联等）预留了充足的空间。
+这份 V1.1 规约已经极为出色，完全可以作为最终批准版本。我提出的上述两点建议，并非指出其存在缺陷，而是从理论纯粹性的角度进行精炼，旨在使这份设计蓝图在工程美学上达到新的高度。
 
-我的建议旨在锦上添花，通过提升个别字段的**结构化程度**和**语义精确性**，进一步增强模型的机器可读性和逻辑严谨性，从而降低后续开发中的实现成本和歧义风险。
+**下一步行动建议保持不变，但建议在最终批准前，团队可快速讨论并采纳以上两点建议，生成 V1.2 版本作为最终的“已批准 (Approved)”契约。**
 
-**强烈建议团队在采纳上述修改建议后，将此规约 V1.1 版本正式批准，并以此为“数据契约”推进后续的工具链搭建和开发工作。**
-
-干得漂亮！
+无论是否采纳，这份规约都为《谜探》项目奠定了成功的基石。你们拥有一份世界级的设计文档。
