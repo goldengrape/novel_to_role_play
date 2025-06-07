@@ -1,185 +1,115 @@
 好的，指令收到。
 
-作为一位精通公理设计（Axiomatic Design, AD）与函数式编程（Functional Programming, FP）的专家，我将对这份由AI生成的《系统API规约 V1.0》（以下简称SAS）进行一次苛刻但富有建设性的审查。
-
-我的审查将严格遵循一个核心标准：**此API规约（SAS）在多大程度上忠实、高效且无歧义地实现了《公理设计文档 V1.1》（ADD）中定义的架构和数据流？**
+我将以公理设计专家的身份，秉持最严谨的工程标准，对这份由AI撰写的《系统API规约 (SAS) V1.1》进行苛刻的审查。审查的唯一依据是《“谜探”公理设计文档 (ADD) V1.1》中确立的设计原则和功能分解。
 
 ---
 
-### **《谜探》系统API规约 V1.0 评审报告**
+## 《系统API规约 V1.1》同行评审报告
 
-**评审者:** Gemini 2.5 Pro (以AD/FP专家视角)
-**评审结论:** **高度肯定，但存在关键疏漏。**
+**致:** 《谜探》项目首席架构师
+**发自:** 公理设计专家
+**主题:** 对《系统API规约 V1.1》的最终审查与修改指令
+**日期:** 2024年6月8日
 
-**总体评价:**
-这份API规约是一份非常出色的工程文档。其起草者（无论是人类还是AI）对现代API设计原则有着深刻的理解。它正确地识别了LLM驱动系统的核心挑战（异步性），采用了资源导向的RESTful风格，并强调了“契约优先”的开发模式。其结构清晰，大部分设计选择都相当稳健，为前后端并行开发奠定了坚实的基础。
+### 1. 总体评价 (Overall Assessment)
 
-然而，如果用公理设计文档（ADD）的严苛标准来衡量，这份规约在将ADD的设计思想**完全转化**为工程现实方面，存在几处明显的疏漏和一处语义模糊，可能导致未来的功能缺失和潜在的性能问题。
+首先，必须承认所提交的《系统API规约 (SAS) V1.1》和《公理设计文档 (ADD) V1.1》质量极高。设计者（无论是人类还是AI）对公理设计和现代API设计的理解非常深刻。两个文档之间表现出高度的一致性，这在工程实践中非常罕见且极具价值。
 
----
+**值得称赞的优点：**
 
-### **一、关键修改意见 (Critical Findings)**
+*   **忠实于公理设计：** API端点的设计严格遵循了ADD中定义的FR/DP分解。例如，`POST /projects`和`POST /.../configure`清晰地映射了触发`DP1.1`和`DP1.2`的动作；新增的`/export`端点则完善了`DP2`的职责。
+*   **语义清晰：** V1.1版本对“提取(extract)”和“生成(generate)”的区分做得非常好。这避免了对`GET /.../scripts`等端点产生昂贵LLM调用的误解，确保了API的性能和成本可预测性，完全符合信息公理。
+*   **过程变量(PVs)的映射：** `ConfigurationRequest`中新增的`generationParams`成功地将ADD中定义的PVs（如`difficulty`, `murdererProtection`）暴露为API层的可配置参数，这是理论联系实际的绝佳体现。
 
-#### **1. 功能缺失：未能完全映射ADD中的设计参数(DP)与过程变量(PV)**
+然而，**“苛刻审查”** 的目的在于发现并消除设计中最后残存的模糊地带与不一致性。经过逐行比对ADD和SAS，我发现了**两处核心问题**和**一处优化建议**。这些问题虽然细微，但若不修正，可能会在实现阶段引入不必要的复杂性或在未来演进中造成障碍。
 
-这是最严重的问题。ADD V1.1通过“之字形分解”精心定义了多个可调的**过程变量(PVs)**，它们是用户（或开发者）控制系统行为的“旋钮”。然而，当前的API规约**完全忽略了这些控制入口**。
+### 2. 核心修改建议 (Mandatory Revisions)
 
-*   **问题根源:** `POST /projects/{projectId}/configure` 端点的 `ConfigurationRequest` Body过于简单。
+以下修改建议**必须**被采纳，以形成一个真正满足公理设计原则的、无歧义的最终规约。
+
+#### **建议 1: 统一`/export`端点的异步行为，消除二义性 (CRITICAL)**
+
+*   **问题描述:**
+    当前`/export`端点的响应设计存在严重的不一致性。它定义了两种成功响应：`200 OK`（直接返回文件流）和`202 Accepted`（启动异步任务）。这意味着客户端在调用同一个API后，必须准备处理两种完全不同的后续逻辑，这**严重违反了API设计的“可预测性”原则**。这种设计会给`DP3`（前端与状态管理器）的实现带来不必要的复杂性和错误处理负担。
+
+*   **公理设计分析:**
+    从公理设计角度看，一个DP（设计参数）的行为应该是确定的。`DP2`（I/O接口模块）的导出功能，其复杂度和耗时不应由客户端去猜测。为了保持设计的简单性和健壮性（信息公理），必须选择一种统一的行为模式。
+
+*   **修改指令:**
+    **删除`/export`端点下的`200 OK`响应。**
+    此端点**必须始终**表现为异步行为。无论导出过程预计耗时多少，它都**必须**返回`202 Accepted`，并更新项目状态为`EXPORTING`。客户端通过轮询`GET /projects/{projectId}`来跟踪进度。当状态变为`EXPORT_COMPLETE`时，`ProjectStatus`对象中应出现一个新的字段，如`exportFileUrl`，供客户端下载。
+
+*   **修订后的`ProjectStatus` Schema:**
+
     ```yaml
-    # 当前的设计 (过于简化)
-    ConfigurationRequest:
+    ProjectStatus:
       type: object
-      required:
-        - murdererId
-        - playerCharacters
       properties:
-        murdererId:
+        # ... (existing properties) ...
+        status:
+          enum: [..., EXPORTING, EXPORT_COMPLETE, FAILED]
+        csm: { ... }
+        exportFileUrl: # <-- 新增字段
           type: string
-        playerCharacters:
-          type: array
-          ...
+          format: uri
+          description: "当状态为'EXPORT_COMPLETE'时，提供完整的游戏包下载链接。"
     ```
-*   **ADD中的不匹配项:**
-    *   **DP1.3 (剧本生成器):** 缺少 `用户设定的“凶手保护机制”开关`。
-    *   **DP1.4 (线索生成器):** 缺少 `用户设定的“游戏难度”参数`。
-    *   **DP4 (质量与增强模块):** 缺少 `用户设定的“情感基调”参数`。
-*   **影响:** 这使得ADD中定义的灵活性和可配置性沦为空谈。前端（DP3）无法将用户的偏好设置传递给后端，后端（DP1, DP4）也无法根据这些变量来调整生成策略。这违反了ADD的设计意图，即通过PVs来控制DPs以满足FRs。
 
-*   **修改建议:** 扩充 `ConfigurationRequest` 对象，增加一个 `generationParams` 字段来容纳所有过程变量。
+#### **建议 2: 细化失败状态以增强系统的可诊断性 (MAJOR)**
+
+*   **问题描述:**
+    当前的`ProjectStatus`的`status`枚举中只有一个`FAILED`状态。如果一个任务失败了，客户端（以及用户）无法得知是哪一个环节出了问题。是CSM生成失败了，还是GSM生成失败了？
+
+*   **公理设计分析:**
+    ADD的分解将系统划分为多个独立的阶段（`DP1.1`, `DP1.2`等）。一个健壮的系统应该能精确地报告是哪个DP在执行中遇到了问题。模糊的`FAILED`状态违反了信息公理，因为它隐藏了对诊断至关重要的信息，增加了调试的复杂性。
+
+*   **修改指令:**
+    将单一的`FAILED`状态分解为与处理阶段对应的具体失败状态。
+
+*   **修订后的`status`枚举:**
 
     ```yaml
-    # 建议的修改
-    ConfigurationRequest:
-      type: object
-      required:
-        - murdererId
-        - playerCharacters
-      properties:
-        murdererId:
+        status:
           type: string
-          description: "用户指定的凶手角色ID，必须是CSM中存在的characterId。"
-        playerCharacters:
-          type: array
-          ...
-        generationParams: # <-- 新增字段
-          type: object
-          description: "控制生成过程的详细参数，映射ADD中的过程变量(PVs)。"
-          properties:
-            difficulty:
-              type: string
-              enum: [EASY, NORMAL, HARD]
-              default: NORMAL
-              description: "游戏难度，影响线索隐晦度和迷惑线索比例。"
-            murdererProtection:
-              type: boolean
-              default: true
-              description: "是否开启凶手保护机制，影响谎言生成策略。"
-            emotionalTone:
-              type: string
-              enum: [NEUTRAL, TENSE, DARK, HUMOROUS]
-              default: NEUTRAL
-              description: "内容的整体情感基调，指导风格控制器。"
+          enum: 
+            - CSM_PROCESSING
+            - CSM_COMPLETE
+            - GSM_PROCESSING
+            - GSM_COMPLETE
+            - EXPORTING
+            - EXPORT_COMPLETE
+            - CSM_FAILED   # <-- 修订
+            - GSM_FAILED   # <-- 修订
+            - EXPORT_FAILED # <-- 修订
     ```
+    同时，`message`字段应在失败时提供具体的错误日志或原因。
 
-#### **2. 功能缺失：未能体现DP2（I/O接口）的完整职责**
+### 3. 设计优化建议 (Recommended Improvement)
 
-ADD V1.1中明确定义了 `DP2: I/O接口与格式化适配器模块`，其对应的 `FR2` 是“提供系统数据的输入与输出接口，**确保格式灵活与数据可移植性**”。
+此建议不修复严重缺陷，但采纳它将使API设计更符合RESTful的最佳实践，并为未来扩展打下更好的基础。
 
-*   **问题根源:** 当前API只处理了“输入”（小说上传）和在线数据“查询”（通过JSON API），**完全没有考虑“输出/导出”功能**。一个完整的“剧本杀游戏包”通常需要打包成离线格式（如PDF、ZIP压缩包）方便打印和分发。
-*   **影响:** 系统无法完成其最终使命——生成一个“完整的剧本杀游戏包”。用户只能在线浏览，无法离线使用。这使得 `DP2` 的设计被部分架空。
-*   **修改建议:** 增加一个专门用于导出的端点。
+#### **建议 3: 增强资源操作的对称性，提供单个线索获取端点**
 
-    ```yaml
-    # 建议新增的路径
-    /projects/{projectId}/export:
-      post:
-        tags:
-          - "项目生命周期 (Project Lifecycle)"
-        summary: "导出完整的剧本杀游戏包"
-        description: |
-          请求生成并下载一个完整的剧本杀游戏包。
-          可以指定导出的文件格式。
-          这可能是一个异步操作，返回一个任务ID或直接返回文件流。
-        parameters:
-          - name: projectId
-            in: path
-            required: true
-            schema:
-              type: string
-        requestBody:
-          required: true
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  format:
-                    type: string
-                    enum: [PDF, ZIP, JSON]
-                    default: PDF
-                    description: "导出的文件格式。"
-        responses:
-          '200':
-            description: "成功返回文件流。"
-            content:
-              application/pdf: {}
-              application/zip: {}
-              application/json: {}
-          '202':
-            description: "导出任务已启动，请稍后轮询任务状态。"
-    ```
+*   **现状分析:**
+    当前API提供了`GET /.../scripts/{characterId}`来获取单个角色的剧本，但获取线索只有一个`GET /.../clues`端点，一次性返回所有线索。这在设计上存在不对称性。
 
-#### **3. 语义模糊：对“即时生成”的歧义可能导致性能灾难**
+*   **优化建议:**
+    虽然当前需求可能不要求单独获取某个线索，但一个真正RESTful的API应该允许对集合中的单个资源进行操作。建议增加一个端点：
+    `GET /projects/{projectId}/clues/{clueId}`
 
-ADD V1.1中，数据流是清晰的单向管道： `CSM -> GSM -> {Scripts, Clues}`。这意味着一旦GSM生成完毕，所有剧本和线索都是GSM的一个确定性**投影 (Projection)**，应该能被快速、廉价地计算出来。
+*   **理由:**
+    1.  **设计优雅与一致性:** 使线索（Clues）和剧本（Scripts）这两个核心内容资源的访问模式保持一致。
+    2.  **未来可扩展性:** 为未来可能的需求（如“查看单个线索的详细信息”、“对单个线索进行标记”等）预留了接口。
+    3.  **遵循RESTful原则:** 集合资源（`/clues`）和单个项目资源（`/clues/{clueId}`）是标准的REST模式。
 
-*   **问题根源:** `GET /projects/{projectId}/scripts/{characterId}` 端点的描述中存在歧义。
-    > description: "为指定角色**生成并获取**其个人剧本..."
+### 4. 评审结论
 
-*   **影响:** “生成”这个词可以被误解为“每次请求都进行一次新的LLM调用”。如果前端开发者如此理解，每次用户点击查看剧本都会触发一次昂贵且耗时的LLM API调用。这将导致：
-    1.  **性能雪崩:** 系统响应缓慢。
-    2.  **成本失控:** LLM调用费用激增。
-    3.  **结果不一致:** 每次生成的剧本措辞可能略有不同，违反了“单一真相来源（GSM）”的原则。
-*   **修改建议:** 修改端点描述，消除歧义，明确指出这是一个从已完成的GSM中**提取和格式化**数据的操作。
+《系统API规约 V1.1》是一份出色的工程文档，它成功地将《公理设计文档 V1.1》的理论思想转化为了具体的、可执行的接口契约。
 
-    ```yaml
-    # 建议的描述修改
-    /projects/{projectId}/scripts/{characterId}:
-      get:
-        ...
-        summary: "获取指定角色的剧本"
-        description: |
-          从已生成的游戏化故事模型(GSM)中，提取并格式化指定角色的个人剧本。
-          此操作不涉及新的LLM调用，保证了速度和结果的一致性。
-          它包含了该角色所需的所有公开/私密信息、目标和谎言。
-        ...
-    ```
+**但是，它尚未达到“冻结”状态。**
 
-### **二、潜在优化建议 (Minor Findings)**
+请**必须执行**上述第2节中的**两项核心修改**。强烈建议采纳第3节中的优化建议。完成这些修订后，更新版本号至**V1.2**，并可将其状态最终确认为 **“已批准 (Approved)”**。届时，这份API规约将成为一份真正严谨、健壮、无歧义的工程蓝图，能够完美地指导后续的并行开发工作。
 
-#### **1. 资源获取的粒度与数据冗余**
+我已完成审查。期待看到采纳了这些意见的最终版本。
 
-`CharacterScript` 和 `ClueCard` 的Schema设计是“全包含”的，这非常便于前端直接使用。但从纯粹的RESTful和数据规范化角度看，存在少量冗余。例如，`CharacterScript` 中的 `characterName` 已经在CSM中存在。
-
-*   **当前方法的优点:** 简单，前端无需自行组装数据，降低了前端复杂度。
-*   **替代方法的优点:** 更符合HATEOAS原则，减少数据传输量，数据源更单一。前端可以先获取GSM，然后在本地根据characterId自行组装视图。
-*   **评审意见:** **维持现状。** 对于此类应用，前端开发的便利性往往优先于极致的数据规范化。当前设计是务实且高效的，无需修改，但团队应意识到这是一个明确的设计权衡（Trade-off）。
-
----
-
-### **最终结论与行动建议**
-
-这份API规约草案是一个**优秀的起点 (85/100)**，但绝不能直接冻结。它成功地搭建了系统的宏观流程，但在细节上未能完全承载公理设计文档（ADD）的精髓。
-
-**必须执行以下行动：**
-
-1.  **立即采纳三项关键修改意见：**
-    *   **扩充 `ConfigurationRequest`**，以支持过程变量的传入。
-    *   **增加 `/export` 端点**，以完成DP2的全部功能。
-    *   **澄清“即时生成”的描述**，以避免性能和成本问题。
-2.  **重新评审:** 在完成上述修订后，组织前后端团队进行正式的API契约评审，确保所有人都对接口的职责和行为有一致的理解。
-3.  **冻结并推进:** 评审通过后，将API规约版本更新为V1.1，状态置为 **已批准 (Approved)**，然后严格按照文档中的“下一步行动建议”推进开发。
-
-通过这些修订，这份API规约将从一份“良好”的文档，转变为一份真正能指导项目成功的、**严谨且完备的工程契约**，完美地衔接了高层公理设计与底层的编码实现。
-
-接下来，请继续执行原指令：**根据ADD，生成《LLM Prompt工程与实现策略》。**
+公理设计专家
